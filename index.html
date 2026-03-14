@@ -175,9 +175,9 @@ var STREAM_URLS={
 var BOOKS={'11':'Alice in Wonderland by Lewis Carroll','278':'Rita Hayworth and Shawshank Redemption by Stephen King','238':'The Godfather by Mario Puzo','155':'The Dark Knight Returns by Frank Miller','680':'Pulp Fiction (original screenplay by Quentin Tarantino)','13':'Forrest Gump by Winston Groom','120':'The Lord of the Rings by J.R.R. Tolkien','121':'The Two Towers by J.R.R. Tolkien','122':'The Return of the King by J.R.R. Tolkien','550':'Fight Club by Chuck Palahniuk','807':'Se7en (original screenplay by Andrew Kevin Walker)','424':'Schindler\'s List by Thomas Keneally','27205':'Inception (original screenplay by Christopher Nolan)','157336':'Interstellar (original screenplay by Jonathan & Christopher Nolan)','19404':'Dilwale Dulhania Le Jayenge','497':'The Green Mile by Stephen King','372058':'Your Name (novel by Makoto Shinkai)','637':'Life is Beautiful','389':'12 Angry Men','429':'The Good, The Bad and The Ugly','346':'Seven Samurai','769':'GoodFellas by Nicholas Pileggi','429617':'Spider-Man: Far From Home','299536':'Avengers: Infinity War','299534':'Avengers: Endgame','667257':'Shōgun by James Clavell','872585':'American Prometheus by Kai Bird & Martin J. Sherwin','438631':'Dune by Frank Herbert','693134':'Dune: Part Two — Dune by Frank Herbert','466420':'Killers of the Flower Moon by David Grann','346698':'Barbie','569094':'Spider-Man: Across the Spider-Verse','940551':'Migration','786892':'Furiosa','823464':'Godzilla x Kong','653346':'Kingdom of the Planet of the Apes','150540':'Inside Out','1022789':'Inside Out 2'};
 
 var S={movies:[],loading:false,err:null,page:1,tp:1,genres:[],moods:[],q:'',tab:'trending',mode:'tab',
-  sel:null,trail:null,provs:[],
+  sel:null,trail:null,provs:[],aiLoading:false,
   wheel:[null,null,null],spinning:false,spinOverlay:false,result:null,resultTrail:null,resultProvs:[],
-  timer:null};
+  timer:null,bookRec:null};
 
 function api(path,params){
   var qs='path='+encodeURIComponent(path);
@@ -203,11 +203,56 @@ function addW(movie){for(var i=0;i<3;i++){if(S.wheel[i]&&S.wheel[i].id===movie.i
 function rmW(i){S.wheel[i]=null;draw()}
 function wc(){return S.wheel.filter(Boolean).length}
 
+var fillCount=0;
+
 function autoFill(){
-  var av=S.movies.filter(function(m){return!S.wheel.some(function(w){return w&&w.id===m.id})});
-  for(var i=0;i<3;i++){if(!S.wheel[i]&&av.length){var ri=Math.floor(Math.random()*av.length);S.wheel[i]=av.splice(ri,1)[0]}}
+  // Always pick 3 fresh random movies
+  var av=S.movies.filter(function(m){return true});
+  // Shuffle
+  for(var i=av.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=av[i];av[i]=av[j];av[j]=tmp}
+  S.wheel=[av[0]||null,av[1]||null,av[2]||null];
+  fillCount++;
+  draw();
+  // After 3rd random fill, show book recommendation
+  if(fillCount>=3){
+    fillCount=0;
+    setTimeout(function(){showBookRec()},400);
+  }
+}
+
+function showBookRec(){
+  // Gather genres from the 3 wheel movies
+  var allGenres=[];
+  S.wheel.forEach(function(m){if(m)m.gi.forEach(function(g){if(allGenres.indexOf(g)<0)allGenres.push(g)})});
+  // Match genre to book recommendations
+  var bookRecs={
+    '28':'The Bourne Identity by Robert Ludlum — a gripping spy thriller that defined the genre',
+    '878':'Dune by Frank Herbert — the greatest science fiction epic ever written',
+    '27':'The Shining by Stephen King — psychological horror at its most unsettling',
+    '53':'Gone Girl by Gillian Flynn — a twisting thriller you won\'t put down',
+    '18':'A Little Life by Hanya Yanagihara — a devastating, beautiful drama about friendship',
+    '35':'Catch-22 by Joseph Heller — the funniest, most absurd novel about war',
+    '10749':'Normal People by Sally Rooney — intimate, modern love at its most honest',
+    '14':'The Name of the Wind by Patrick Rothfuss — fantasy storytelling at its finest',
+    '16':'The House in the Cerulean Sea by TJ Klune — warm, whimsical, and animated in spirit',
+    '80':'In Cold Blood by Truman Capote — the original true crime masterpiece',
+    '99':'Sapiens by Yuval Noah Harari — the documentary of human history in book form',
+    '12':'Into the Wild by Jon Krakauer — adventure, freedom, and the search for meaning',
+    '10751':'Wonder by R.J. Palacio — a heartwarming family story about kindness',
+    '9648':'And Then There Were None by Agatha Christie — the ultimate mystery',
+    '36':'The Pillars of the Earth by Ken Follett — history brought to vivid life',
+    '10402':'Daisy Jones & The Six by Taylor Jenkins Reid — rock, music, and raw ambition'
+  };
+  var rec=null;
+  for(var i=0;i<allGenres.length;i++){
+    if(bookRecs[allGenres[i]]){rec=bookRecs[allGenres[i]];break}
+  }
+  if(!rec)rec='Sapiens by Yuval Noah Harari — a fascinating journey through human history';
+  S.bookRec=rec;
   draw();
 }
+
+function closeBookRec(){S.bookRec=null;draw()}
 
 function startSpin(){
   if(wc()<2)return;S.spinning=true;S.spinOverlay=true;S.result=null;draw();
@@ -240,7 +285,7 @@ function draw(){
   var gc=GENRES.map(function(g){var on=S.genres.indexOf(g.s)>=0;return'<div class="chip'+(on?' on':'')+'" onclick="tgG(\''+g.s+'\')">'+g.l+'</div>'}).join('');
   var mc=MOODS.map(function(m){var on=S.moods.indexOf(m.id)>=0;return'<div class="chip'+(on?' on':'')+'" onclick="tgM(\''+m.id+'\')">'+m.l+'</div>'}).join('');
   var cl=(S.genres.length||S.moods.length||S.q)?'<button onclick="clr()" style="padding:5px 12px;border-radius:6px;font-size:10px;background:transparent;border:1px solid var(--line);color:var(--mute);cursor:pointer;font-family:inherit">Clear</button>':'';
-  var si=S.q?'<button class="sbtn" onclick="doS()">Search</button>':'';
+  // search button is now inline in the sbox
   var tbs=TABS.map(function(t){return'<button class="tab'+(S.tab===t.id&&S.mode==='tab'?' on':'')+'" onclick="stab(\''+t.id+'\')">'+t.l+'</button>'}).join('');
 
   var gh='';
@@ -265,7 +310,7 @@ function draw(){
   a.innerHTML='<header><div class="hdr">'
     +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;flex-wrap:wrap">'
     +'<div class="logo">Reel<em>Spin</em></div>'
-    +'<div class="sbox"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;opacity:.3">🔍</span><input id="si" value="'+S.q+'" placeholder="Search any movie, show, or actor..." onkeydown="if(event.key===\'Enter\')doS()" oninput="S.q=this.value">'+si+'</div>'
+    +'<div class="sbox"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;opacity:.3">✦</span><input id="si" value="'+S.q+'" placeholder="Tell me how you feel, who you love, what you\'re craving..." onkeydown="if(event.key===\'Enter\')doS()" oninput="S.q=this.value">'+(S.aiLoading?'<div style="position:absolute;right:14px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border:2px solid var(--ink);border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite"></div><span style="font-size:10px;color:var(--mute)">thinking...</span></div>':(S.q?'<button class="sbtn" onclick="doS()">Ask ✦</button>':''))+'</div>'
     +cl+'</div>'
     +'<div class="chips" style="margin-bottom:3px">'+gc+'</div>'
     +'<div class="chips">'+mc+'</div>'
@@ -280,9 +325,9 @@ function draw(){
     +'<button class="spin-btn" onclick="startSpin()" '+(wn<2?'disabled':'')+'>Spin the Lens'+(wn<2?' — pick '+(2-wn)+' more':'')+'</button>'
     +'<button class="auto-fill-btn" onclick="autoFill()">Random Fill</button>'
     +'</div>'
-    +'<p style="font-size:10px;color:var(--dim)">Add 2–3 titles, then spin</p>'
+    +'<p style="font-size:10px;color:var(--dim)">Add 2–3 titles, then spin · Hit random 3× for a book rec</p>'
     +'</div></div></div></div>'
-    +drawSpin()+drawResult()+drawTimer()+drawModal();
+    +drawSpin()+drawResult()+drawTimer()+drawBookRec()+drawModal();
 }
 
 function drawSpin(){
@@ -358,6 +403,20 @@ function drawTimer(){
     +'</div></div>';
 }
 
+function drawBookRec(){
+  if(!S.bookRec)return'';
+  return'<div style="position:fixed;inset:0;z-index:180;background:rgba(250,250,248,.97);display:flex;align-items:center;justify-content:center;animation:fadeIn .3s" onclick="closeBookRec()">'
+    +'<div onclick="event.stopPropagation()" style="background:#fff;border-radius:12px;max-width:460px;width:90%;padding:36px 32px;border:1px solid var(--line);box-shadow:0 16px 50px rgba(0,0,0,.08);text-align:center;animation:bounceIn .4s cubic-bezier(.34,1.56,.64,1)">'
+    +'<div style="font-size:48px;margin-bottom:16px">📖</div>'
+    +'<p style="font-size:11px;color:var(--accent2);text-transform:uppercase;letter-spacing:3px;margin-bottom:8px;font-weight:600">Based on your picks</p>'
+    +'<h3 style="font-family:Instrument Serif,serif;font-size:22px;font-weight:400;font-style:italic;line-height:1.4;margin-bottom:12px;color:var(--ink)">You might love this book</h3>'
+    +'<p style="font-size:14px;line-height:1.7;color:#555;margin-bottom:24px">'+S.bookRec+'</p>'
+    +'<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">'
+    +'<a href="https://www.goodreads.com/search?q='+encodeURIComponent(S.bookRec.split(' — ')[0]||S.bookRec)+'" target="_blank" rel="noopener" style="padding:10px 22px;border-radius:8px;background:var(--ink);color:#fff;font-size:12px;font-weight:600;text-decoration:none;font-family:inherit">Find on Goodreads</a>'
+    +'<button onclick="closeBookRec()" style="padding:10px 22px;border-radius:8px;background:transparent;border:1px solid var(--line);color:var(--mute);font-size:12px;cursor:pointer;font-family:inherit">Dismiss</button>'
+    +'</div></div></div>';
+}
+
 function drawModal(){
   if(!S.sel)return'';var m=S.sel;
   var tr=S.trail?'<div style="position:relative;width:100%;aspect-ratio:16/9;border-radius:12px 12px 0 0;overflow:hidden;background:#111"><iframe src="https://www.youtube.com/embed/'+S.trail+'?autoplay=1&rel=0&modestbranding=1" allow="autoplay;encrypted-media" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%;border:none"></iframe><button class="mcls" onclick="clsM()">✕</button></div>'
@@ -382,7 +441,61 @@ function drawModal(){
 function tgG(s){var i=S.genres.indexOf(s);if(i>=0)S.genres.splice(i,1);else S.genres.push(s);S.moods=[];S.mode=S.genres.length?'genre':'tab';S.q='';load()}
 function tgM(id){var i=S.moods.indexOf(id);if(i>=0)S.moods.splice(i,1);else S.moods.push(id);S.genres=[];S.mode=S.moods.length?'mood':'tab';S.q='';load()}
 function stab(id){S.tab=id;S.mode='tab';S.genres=[];S.moods=[];S.q='';load()}
-function doS(){var el=document.getElementById('si');S.q=el?el.value:S.q;if(!S.q.trim())return;S.mode='search';S.genres=[];S.moods=[];load()}
+async function doS(){
+  var el=document.getElementById('si');
+  S.q=el?el.value:S.q;
+  if(!S.q.trim())return;
+  S.genres=[];S.moods=[];
+
+  // Check if it's a simple title/actor search (short, looks like a name)
+  var query=S.q.trim();
+  var isSimple=query.split(' ').length<=3 && !/feel|mood|vibe|want|like|craving|something|looking for|in the mood/i.test(query);
+
+  if(isSimple){
+    // Direct TMDB search
+    S.mode='search';load();
+    return;
+  }
+
+  // AI-powered natural language search
+  S.aiLoading=true;S.mode='search';S.loading=true;S.movies=[];draw();
+
+  try{
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',max_tokens:1500,
+        system:'You are a movie recommendation engine. Given a natural language description of how someone feels, what they want, actors they like, or vibes they are after, return a JSON array of 10-15 movie/TV show titles that match. Return ONLY a valid JSON array of strings like ["Title 1","Title 2"]. No markdown, no backticks, no explanation. Mix well-known and hidden gems. Consider mood, genre, actors mentioned, era, and tone.',
+        messages:[{role:'user',content:'Recommend movies/shows for someone who says: "'+query+'"'}]
+      })
+    });
+    var data=await resp.json();
+    var text=(data.content||[]).filter(function(b){return b.type==='text'}).map(function(b){return b.text}).join('');
+    var titles=null;
+    try{titles=JSON.parse(text.trim())}catch(e){var m=text.match(/\[[\s\S]*\]/);if(m)try{titles=JSON.parse(m[0])}catch(e2){}}
+
+    if(Array.isArray(titles)&&titles.length){
+      // Search TMDB for each title
+      var searches=await Promise.all(titles.slice(0,12).map(function(t){
+        return api('/search/movie',{query:t}).then(function(d){return(d.results||[])[0]||null}).catch(function(){return null});
+      }));
+      var found=searches.filter(function(m){return m&&m.poster_path}).map(pk);
+      // Deduplicate
+      var seen={};
+      S.movies=found.filter(function(m){if(seen[m.id])return false;seen[m.id]=true;return true});
+      S.tp=1;S.page=1;
+    }else{
+      // Fallback to regular search
+      S.q=query;S.aiLoading=false;S.loading=false;
+      S.mode='search';load();return;
+    }
+  }catch(e){
+    console.error('AI search error:',e);
+    // Fallback to regular TMDB search
+    S.mode='search';S.aiLoading=false;load();return;
+  }
+  S.aiLoading=false;S.loading=false;draw();
+}
 function clr(){S.genres=[];S.moods=[];S.q='';S.mode='tab';load()}
 function ldM(){if(!S.loading)load(S.page+1)}
 function clsM(){S.sel=null;S.trail=null;S.provs=[];draw()}
