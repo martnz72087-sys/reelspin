@@ -204,7 +204,20 @@ async function load(pg){
   S.loading=false;draw();
 }
 
-function addById(id){var m=S.movies.find(function(x){return x.id===id});if(m)addW(m)}
+function addById(id){
+  var m=S.movies.find(function(x){return x.id===id});
+  if(!m)return;
+  // Check if already on wheel — if so, remove it
+  for(var i=0;i<3;i++){
+    if(S.wheel[i]&&S.wheel[i].id===id){
+      S.wheel[i]=null;
+      draw();
+      return;
+    }
+  }
+  // Otherwise add it
+  addW(m);
+}
 function addW(m){
   if(!m)return;
   // Check for duplicates
