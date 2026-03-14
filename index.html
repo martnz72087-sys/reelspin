@@ -17,7 +17,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Figtree',system-ui,sans-
 @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-@keyframes lensRotate{from{transform:rotate(0deg)}to{transform:rotate(1080deg)}}
+@keyframes lensRotate{0%{transform:rotate(0deg)}70%{transform:rotate(900deg)}100%{transform:rotate(1080deg)}}
 @keyframes bounceIn{0%{transform:scale(0);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
 @keyframes confetti-fall{0%{transform:translateY(-10px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
 @keyframes tickPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
@@ -82,7 +82,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(250,250,248,.97);backdro
 
 /* Lens Wheel Overlay */
 .wheel-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;animation:fadeIn .3s}
-.lens{width:300px;height:300px;border-radius:50%;border:3px solid #333;position:relative;animation:lensRotate 3s cubic-bezier(.2,.8,.3,1) forwards;overflow:hidden}
+.lens{width:320px;height:320px;border-radius:50%;border:3px solid #333;position:relative;animation:lensRotate 3.5s cubic-bezier(.15,.75,.3,1) forwards;overflow:hidden}
 .lens-ring{position:absolute;inset:8px;border-radius:50%;border:2px solid #444}
 .lens-ring2{position:absolute;inset:20px;border-radius:50%;border:1px solid #555}
 .lens-ring3{position:absolute;inset:40px;border-radius:50%;border:1px solid #666;display:flex;align-items:center;justify-content:center}
@@ -155,7 +155,9 @@ var TABS=[
 {id:'trending',l:'Trending Now',ep:'/trending/all/week'},
 {id:'top',l:'Best Rated',ep:'/movie/top_rated'},
 {id:'popular',l:'Most Popular',ep:'/movie/popular'},
-{id:'now',l:'In Theaters',ep:'/movie/now_playing'},
+{id:'sub',l:'Subscription',ep:'/discover/movie',extra:{with_watch_monetization_types:'flatrate',watch_region:'US',sort_by:'popularity.desc'}},
+{id:'rental',l:'Rental',ep:'/discover/movie',extra:{with_watch_monetization_types:'rent',watch_region:'US',sort_by:'popularity.desc'}},
+{id:'free',l:'Free',ep:'/discover/movie',extra:{with_watch_monetization_types:'free',watch_region:'US',sort_by:'popularity.desc'}},
 {id:'upcoming',l:'Coming Soon',ep:'/movie/upcoming'},
 {id:'tv',l:'Top TV',ep:'/tv/top_rated'},
 {id:'tvtrend',l:'TV Trending',ep:'/trending/tv/week'}];
@@ -190,7 +192,7 @@ async function load(pg){
     if(S.mode==='search'&&S.q){d=await api('/search/multi',{query:S.q,page:pg,include_adult:false});d.results=(d.results||[]).filter(function(r){return r.media_type==='movie'||r.media_type==='tv'})}
     else if(S.mode==='genre'){var ids=S.genres.map(function(s){var g=GENRES.find(function(x){return x.s===s});return g?g.id:null}).filter(Boolean).join(',');d=await api('/discover/movie',{with_genres:ids,sort_by:'popularity.desc','vote_count.gte':'20',page:pg})}
     else if(S.mode==='mood'){var mg=[];S.moods.forEach(function(mid){var m=MOODS.find(function(x){return x.id===mid});if(m)m.g.forEach(function(g){if(mg.indexOf(g)<0)mg.push(g)})});d=await api('/discover/movie',{with_genres:mg.join(','),sort_by:'popularity.desc','vote_count.gte':'20',page:pg})}
-    else{var tb=TABS.find(function(t){return t.id===S.tab})||TABS[0];d=await api(tb.ep,{page:pg})}
+    else{var tb=TABS.find(function(t){return t.id===S.tab})||TABS[0];var params={page:pg};if(tb.extra)Object.keys(tb.extra).forEach(function(k){params[k]=tb.extra[k]});d=await api(tb.ep,params)}
     var items=(d.results||[]).filter(function(m){return m.poster_path}).map(pk);
     S.movies=pg===1?items:S.movies.concat(items);S.page=pg;S.tp=Math.min(d.total_pages||1,500);
   }catch(e){S.err=e.message&&e.message.indexOf('fetch')>=0?'Cannot reach API — check Netlify env var TMDB_API_KEY and redeploy.':e.message}
@@ -286,12 +288,41 @@ function draw(){
 function drawSpin(){
   if(!S.spinOverlay)return'';
   var filled=S.wheel.filter(Boolean);
-  var segs=filled.map(function(m,i){var colors=['#111','#222','#333'];return'<div style="position:absolute;inset:0;clip-path:polygon(50% 50%,'+(i===0?'50% 0%,100% 0%,100% 50%':i===1?'100% 50%,100% 100%,0% 100%,0% 50%':'50% 0%,0% 0%,0% 50%')+');background:'+colors[i%3]+';display:flex;align-items:center;justify-content:center"><span style="color:#fff;font-size:11px;font-weight:600;transform:rotate('+(i*120+60)+'deg);position:absolute;top:'+(i===0?'25%':'60%')+';left:50%;transform:translateX(-50%) rotate('+(i*120)+'deg)">'+(m.t.length>14?m.t.slice(0,12)+'…':m.t)+'</span></div>'}).join('');
+  var n=filled.length;
+  var degPer=360/n;
+  // Build segments with poster images and readable labels
+  var segs=filled.map(function(m,i){
+    var startDeg=i*degPer;
+    var midDeg=startDeg+degPer/2;
+    var midRad=midDeg*Math.PI/180;
+    // Poster positioned in the segment
+    var px=160+Math.cos(midRad)*75-32;
+    var py=160+Math.sin(midRad)*75-48;
+    // Label positioned closer to edge
+    var lx=160+Math.cos(midRad)*120;
+    var ly=160+Math.sin(midRad)*120;
+    var bgColors=['#1a1a1a','#252525','#1f1f1f'];
+    return'<div style="position:absolute;inset:0;clip-path:polygon(50% 50%,'+clipPoints(i,n)+');background:'+bgColors[i%3]+';overflow:hidden">'
+      +(m.img?'<img src="'+m.img+'" style="position:absolute;left:'+px+'px;top:'+py+'px;width:64px;height:96px;object-fit:cover;border-radius:4px;border:2px solid rgba(255,255,255,.2);box-shadow:0 4px 12px rgba(0,0,0,.5)">':'')
+      +'</div>'
+      +'<div style="position:absolute;left:'+(lx-50)+'px;top:'+(ly-10)+'px;width:100px;text-align:center;pointer-events:none;z-index:2">'
+      +'<span style="background:rgba(0,0,0,.85);color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;white-space:nowrap">'+(m.t.length>16?m.t.slice(0,14)+'…':m.t)+'</span></div>';
+  }).join('');
   return'<div class="wheel-overlay"><div style="text-align:center;animation:bounceIn .4s">'
-    +'<div style="font-size:14px;color:#666;margin-bottom:16px;letter-spacing:4px;text-transform:uppercase">spinning</div>'
-    +'<div class="lens">'+segs+'<div class="lens-ring"></div><div class="lens-ring2"></div><div class="lens-ring3"><div style="width:12px;height:12px;border-radius:50%;background:#fff"></div></div></div>'
-    +'<p style="margin-top:20px;font-family:Instrument Serif,serif;font-size:20px;color:#888;font-style:italic">Finding your film...</p>'
+    +'<div style="font-family:Instrument Serif,serif;font-size:16px;color:#666;margin-bottom:20px;letter-spacing:3px;font-style:italic">spinning the lens</div>'
+    +'<div style="position:relative;display:inline-block">'
+    +'<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:24px;z-index:10;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))">▼</div>'
+    +'<div class="lens" style="width:320px;height:320px">'+segs
+    +'<div class="lens-ring"></div><div class="lens-ring2"></div>'
+    +'<div class="lens-ring3"><div style="width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 8px rgba(255,255,255,.4)"></div></div>'
+    +'</div></div>'
+    +'<p style="margin-top:24px;font-family:Instrument Serif,serif;font-size:22px;color:#999;font-style:italic">Finding your film...</p>'
     +'</div></div>';
+}
+function clipPoints(i,n){
+  var d=360/n;var s=i*d-90;var e=s+d;var pts=[];
+  for(var a=s;a<=e;a+=5){var r=a*Math.PI/180;pts.push((50+50*Math.cos(r)).toFixed(1)+'% '+(50+50*Math.sin(r)).toFixed(1)+'%')}
+  return pts.join(',');
 }
 
 function drawResult(){
