@@ -108,7 +108,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Figtree',system-ui,sans-
 .card .info h3{font-size:11px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card .info p{font-size:9px;color:var(--mute);margin-top:2px}
 .rbadge{position:absolute;bottom:6px;left:6px;padding:2px 7px;border-radius:4px;background:rgba(0,0,0,.8);color:#fff;font-size:9px;font-weight:700}
-.abtn{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;background:var(--ink);border:none;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;z-index:3}
+.abtn{position:absolute;top:6px;right:6px;width:34px;height:34px;border-radius:50%;background:var(--ink);border:2px solid #fff;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;z-index:3;box-shadow:0 2px 8px rgba(0,0,0,.25);opacity:1}
+.abtn:active{transform:scale(.9)}
 .abtn.added{background:var(--gold)}
 
 /* Overlays */
@@ -203,7 +204,25 @@ async function load(pg){
   S.loading=false;draw();
 }
 
-function addW(m){for(var i=0;i<3;i++){if(S.wheel[i]&&S.wheel[i].id===m.id)return}for(var i=0;i<3;i++){if(!S.wheel[i]){S.wheel[i]=m;draw();return}}}
+function addById(id){var m=S.movies.find(function(x){return x.id===id});if(m)addW(m)}
+function addW(m){
+  if(!m)return;
+  // Check for duplicates
+  for(var i=0;i<3;i++){if(S.wheel[i]&&S.wheel[i].id===m.id)return}
+  // Find first empty slot
+  for(var i=0;i<3;i++){
+    if(!S.wheel[i]){
+      S.wheel[i]=m;
+      // If all 3 slots filled, switch to wheel screen
+      if(wc()===3){
+        setTimeout(function(){goTo('wheel')},300);
+      }
+      draw();
+      return;
+    }
+  }
+  // All slots full — do nothing (user must remove one first)
+}
 function rmW(i){S.wheel[i]=null;draw()}
 function wc(){return S.wheel.filter(Boolean).length}
 var fillCount=0;
@@ -333,7 +352,7 @@ function draw(){
   else{
     gh='<div class="grid">'+S.movies.map(function(m,i){
       var inW=S.wheel.some(function(w){return w&&w.id===m.id});
-      return'<div class="card" style="animation-delay:'+i*10+'ms" onclick="openD('+m.id+')"><div class="poster">'+(m.img?'<img src="'+m.img+'" loading="lazy">':'')+'<div class="rbadge">★'+m.v.toFixed(1)+'</div>'+(m.mt==='tv'?'<div style="position:absolute;top:5px;left:5px;padding:2px 6px;border-radius:3px;background:rgba(72,219,251,.9);color:#fff;font-size:8px;font-weight:700">TV</div>':'')+'<button class="abtn'+(inW?' added':'')+'" onclick="event.stopPropagation();addW(S.movies['+i+'])">'+(inW?'✓':'+')+'</button></div><div class="info"><h3>'+m.t+'</h3><p>'+m.y+(m.mt==='tv'?' · TV':'')+'</p></div></div>';
+      return'<div class="card" style="animation-delay:'+i*10+'ms" onclick="openD('+m.id+')"><div class="poster">'+(m.img?'<img src="'+m.img+'" loading="lazy">':'')+'<div class="rbadge">★'+m.v.toFixed(1)+'</div>'+(m.mt==='tv'?'<div style="position:absolute;top:5px;left:5px;padding:2px 6px;border-radius:3px;background:rgba(72,219,251,.9);color:#fff;font-size:8px;font-weight:700">TV</div>':'')+'<button class="abtn'+(inW?' added':'')+'" onclick="event.stopPropagation();addById('+m.id+')">'+(inW?'✓':'+')+'</button></div><div class="info"><h3>'+m.t+'</h3><p>'+m.y+(m.mt==='tv'?' · TV':'')+'</p></div></div>';
     }).join('')+'</div>';
     if(S.page<S.tp&&S.page<20)gh+='<button class="more" onclick="ldM()">Load More</button>';
   }
@@ -363,7 +382,7 @@ function draw(){
     +'<div class="browse-screen'+(isUp?' up':'')+'">'
     +'<div class="browse-header">'
     +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">'
-    +'<button class="browse-back" onclick="goTo(\'wheel\')">↓ Wheel</button>'
+    +'<button class="browse-back" onclick="goTo(\'wheel\')">↓ Wheel'+(wn>0?' <span style="background:var(--ink);color:#fff;font-size:9px;padding:1px 6px;border-radius:10px;margin-left:4px">'+wn+'/3</span>':'')+'</button>'
     +'<div class="logo-sm">Reel<em>Spin</em></div>'
     +'<div class="sbox"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;opacity:.3">✦</span><input id="si" value="'+S.q+'" placeholder="How are you feeling?" onkeydown="if(event.key===\'Enter\')doS()" oninput="S.q=this.value">'+si+'</div>'
     +clB+'</div>'
