@@ -129,6 +129,12 @@ body{background:var(--bg);color:var(--ink);font-family:'Figtree',system-ui,sans-
 .confetti{position:fixed;top:-10px;z-index:999;pointer-events:none;animation:confetti-fall 3s linear forwards}
 
 /* Onboarding */
+.splash-screen{position:fixed;inset:0;z-index:600;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;animation:fadeIn .3s;cursor:pointer}
+.splash-logo{font-family:'Instrument Serif',serif;font-size:52px;font-weight:400;letter-spacing:-1px;opacity:0;animation:splashIn .8s .3s forwards}
+.splash-logo em{font-style:italic;color:var(--gold)}
+.splash-tagline{font-size:14px;color:var(--dim);margin-top:8px;font-style:italic;font-family:'Instrument Serif',serif;opacity:0;animation:splashIn .6s .7s forwards}
+.splash-tap{font-size:11px;color:var(--dim);position:absolute;bottom:40px;opacity:0;animation:splashIn .5s 1.2s forwards}
+@keyframes splashIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .onboard-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;animation:fadeIn .4s;backdrop-filter:blur(8px)}
 .onboard-card{background:#fff;border-radius:16px;max-width:420px;width:90%;padding:36px 28px;text-align:center;animation:bounceIn .5s cubic-bezier(.34,1.56,.64,1)}
 .onboard-step{display:flex;align-items:flex-start;gap:14px;text-align:left;margin-bottom:18px;padding:12px 14px;background:var(--surface);border-radius:10px;border:1px solid var(--line)}
@@ -160,10 +166,27 @@ var SU={'Netflix':'https://www.netflix.com','Hulu':'https://www.hulu.com','Prime
 var BOOKS={'872585':'American Prometheus by Kai Bird','438631':'Dune by Frank Herbert','693134':'Dune by Frank Herbert','466420':'Killers of the Flower Moon by David Grann','278':'Rita Hayworth and Shawshank Redemption by Stephen King','238':'The Godfather by Mario Puzo','120':'The Lord of the Rings by J.R.R. Tolkien','550':'Fight Club by Chuck Palahniuk','497':'The Green Mile by Stephen King','157336':'Interstellar by J. & C. Nolan (screenplay)'};
 var BRECS={28:'The Bourne Identity by Robert Ludlum',878:'Dune by Frank Herbert',27:'The Shining by Stephen King',53:'Gone Girl by Gillian Flynn',18:'A Little Life by Hanya Yanagihara',35:'Catch-22 by Joseph Heller',10749:'Normal People by Sally Rooney',14:'The Name of the Wind by Patrick Rothfuss',16:'The House in the Cerulean Sea by TJ Klune',80:'In Cold Blood by Truman Capote',99:'Sapiens by Yuval Noah Harari',12:'Into the Wild by Jon Krakauer',10751:'Wonder by R.J. Palacio',9648:'And Then There Were None by Agatha Christie'};
 
-// Onboarding
-var onboarded=false;
-try{onboarded=localStorage.getItem('rs_onboarded')==='1'}catch(e){}
-function dismissOnboard(){onboarded=true;try{localStorage.setItem('rs_onboarded','1')}catch(e){}draw()}
+// Onboarding — two parts:
+// 1. Splash: always shows on load, fades after 2s or tap
+// 2. Tutorial: shows after splash unless "Don't remind me" was clicked
+var tutorialDismissed=false;
+try{tutorialDismissed=localStorage.getItem('rs_tut_off')==='1'}catch(e){}
+var showSplash=true;
+var showTutorial=false;
+
+function dismissSplash(){
+  showSplash=false;
+  if(!tutorialDismissed){showTutorial=true}
+  draw();
+}
+function dismissTutorial(){showTutorial=false;draw()}
+function dismissTutorialForever(){
+  showTutorial=false;tutorialDismissed=true;
+  try{localStorage.setItem('rs_tut_off','1')}catch(e){}
+  draw();
+}
+// Auto-dismiss splash after 2.5s
+setTimeout(function(){if(showSplash)dismissSplash()},2500);
 
 // State
 var S={movies:[],loading:false,err:null,page:1,tp:1,genres:[],moods:[],q:'',tab:'trending',mode:'tab',
@@ -551,21 +574,37 @@ function drawModal(){
 }
 
 function drawOnboard(){
-  if(onboarded)return'';
-  return'<div class="onboard-overlay" onclick="event.stopPropagation()">'
-    +'<div class="onboard-card">'
-    +'<div style="font-size:40px;margin-bottom:10px">🎥</div>'
-    +'<h2 style="font-family:Instrument Serif,serif;font-size:26px;margin-bottom:4px">Welcome to Reel<em style="color:var(--gold)">Spin</em></h2>'
-    +'<p style="font-size:13px;color:var(--mute);margin-bottom:22px;line-height:1.6">Can\'t decide what to watch?<br>Let the lens decide for you.</p>'
+  var html='';
 
-    +'<div class="onboard-step"><div class="onboard-num">1</div><div><h4>Browse & Pick</h4><p>Swipe up to explore movies and TV shows. Filter by genre, mood, or search how you\'re feeling. Tap the <strong>+</strong> button on any poster to add it to the lens.</p></div></div>'
+  // Part 1: Splash (always shows on load)
+  if(showSplash){
+    html+='<div class="splash-screen" onclick="dismissSplash()">'
+      +'<div style="font-size:48px;margin-bottom:16px">🎥</div>'
+      +'<div class="splash-logo">Reel<em>Spin</em></div>'
+      +'<div class="splash-tagline">grab the lens, find your film</div>'
+      +'<div class="splash-tap">tap anywhere to continue</div>'
+      +'</div>';
+  }
 
-    +'<div class="onboard-step"><div class="onboard-num">2</div><div><h4>Or Random Fill</h4><p>Don\'t want to choose? Select a genre or mood first, then tap <strong>Random Fill</strong> — it picks 3 from that category. No category? It picks from whatever\'s trending.</p></div></div>'
+  // Part 2: Tutorial (shows after splash, unless permanently dismissed)
+  if(showTutorial){
+    html+='<div class="onboard-overlay" onclick="event.stopPropagation()">'
+      +'<div class="onboard-card">'
+      +'<h2 style="font-family:Instrument Serif,serif;font-size:24px;margin-bottom:4px">How It Works</h2>'
+      +'<p style="font-size:13px;color:var(--mute);margin-bottom:20px;line-height:1.5">Three steps to your next watch.</p>'
 
-    +'<div class="onboard-step"><div class="onboard-num">3</div><div><h4>Spin the Lens</h4><p>With 2-3 movies loaded, <strong>grab the lens and drag</strong> in a circle to spin it — like turning a dial. Or just tap <strong>Spin</strong>. The lens picks your movie.</p></div></div>'
+      +'<div class="onboard-step"><div class="onboard-num">1</div><div><h4>Browse & Pick</h4><p>Swipe up to explore movies and TV shows. Filter by genre, mood, or search how you\'re feeling. Tap the <strong>+</strong> button on any poster to add it to the lens.</p></div></div>'
 
-    +'<button onclick="dismissOnboard()" style="width:100%;padding:14px;border-radius:10px;background:var(--ink);border:none;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:Instrument Serif,serif;font-style:italic;margin-top:6px;letter-spacing:.5px">Let\'s Go</button>'
-    +'</div></div>';
+      +'<div class="onboard-step"><div class="onboard-num">2</div><div><h4>Or Random Fill</h4><p>Don\'t want to choose? Select a genre or mood first, then tap <strong>Random Fill</strong> — it picks 3 from that category. No category? It picks from whatever\'s trending.</p></div></div>'
+
+      +'<div class="onboard-step"><div class="onboard-num">3</div><div><h4>Spin the Lens</h4><p>With 2-3 movies loaded, <strong>grab the lens and drag</strong> in a circle to spin it — like turning a dial. Or just tap <strong>Spin</strong>. The lens picks your movie.</p></div></div>'
+
+      +'<button onclick="dismissTutorial()" style="width:100%;padding:14px;border-radius:10px;background:var(--ink);border:none;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:Instrument Serif,serif;font-style:italic;margin-top:6px">Got It</button>'
+      +'<button onclick="dismissTutorialForever()" style="width:100%;padding:10px;border-radius:8px;background:transparent;border:1px solid var(--line);color:var(--mute);font-size:11px;cursor:pointer;font-family:inherit;margin-top:8px">Don\'t remind me again</button>'
+      +'</div></div>';
+  }
+
+  return html;
 }
 
 // Init
