@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ReelSpin — Spin to Watch</title>
-<meta name="description" content="Can't decide what to watch? Flick the lens. Let fate decide.">
+<meta name="description" content="Can't decide what to watch? Grab the lens, give it a spin. Let fate decide.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎥</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Figtree:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -127,6 +127,15 @@ body{background:var(--bg);color:var(--ink);font-family:'Figtree',system-ui,sans-
 .prov img{width:20px;height:20px;border-radius:3px}
 .gtag{font-size:10px;padding:3px 10px;border-radius:18px;display:inline-block;margin:0 3px 3px 0;background:var(--surface);border:1px solid var(--line);color:var(--mute)}
 .confetti{position:fixed;top:-10px;z-index:999;pointer-events:none;animation:confetti-fall 3s linear forwards}
+
+/* Onboarding */
+.onboard-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;animation:fadeIn .4s;backdrop-filter:blur(8px)}
+.onboard-card{background:#fff;border-radius:16px;max-width:420px;width:90%;padding:36px 28px;text-align:center;animation:bounceIn .5s cubic-bezier(.34,1.56,.64,1)}
+.onboard-step{display:flex;align-items:flex-start;gap:14px;text-align:left;margin-bottom:18px;padding:12px 14px;background:var(--surface);border-radius:10px;border:1px solid var(--line)}
+.onboard-num{width:28px;height:28px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.onboard-step h4{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:2px}
+.onboard-step p{font-size:11px;color:var(--mute);line-height:1.5}
+.hint-tag{display:inline-block;padding:5px 12px;border-radius:8px;font-size:10px;font-weight:600;color:var(--gold);background:rgba(196,162,101,.1);border:1px solid rgba(196,162,101,.2);animation:glowPulse 2s infinite;margin-top:4px}
 .rlinks{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
 .rlinks a{font-size:10px;color:var(--mute);text-decoration:none;padding:3px 9px;border:1px solid var(--line);border-radius:6px}
 .booknote{margin-top:10px;padding:10px 14px;background:var(--surface);border-radius:8px;border:1px solid var(--line);font-size:12px;color:var(--mute)}
@@ -150,6 +159,11 @@ var TABS=[{id:'trending',l:'Trending',ep:'/trending/all/week'},{id:'top',l:'Best
 var SU={'Netflix':'https://www.netflix.com','Hulu':'https://www.hulu.com','Prime Video':'https://www.amazon.com/gp/video','Disney+':'https://www.disneyplus.com','Disney Plus':'https://www.disneyplus.com','Max':'https://www.max.com','Apple TV+':'https://tv.apple.com','Apple TV Plus':'https://tv.apple.com','Peacock':'https://www.peacocktv.com','Peacock Premium':'https://www.peacocktv.com','Paramount+':'https://www.paramountplus.com','Paramount Plus':'https://www.paramountplus.com','Tubi':'https://tubitv.com','MUBI':'https://mubi.com','Crunchyroll':'https://www.crunchyroll.com'};
 var BOOKS={'872585':'American Prometheus by Kai Bird','438631':'Dune by Frank Herbert','693134':'Dune by Frank Herbert','466420':'Killers of the Flower Moon by David Grann','278':'Rita Hayworth and Shawshank Redemption by Stephen King','238':'The Godfather by Mario Puzo','120':'The Lord of the Rings by J.R.R. Tolkien','550':'Fight Club by Chuck Palahniuk','497':'The Green Mile by Stephen King','157336':'Interstellar by J. & C. Nolan (screenplay)'};
 var BRECS={28:'The Bourne Identity by Robert Ludlum',878:'Dune by Frank Herbert',27:'The Shining by Stephen King',53:'Gone Girl by Gillian Flynn',18:'A Little Life by Hanya Yanagihara',35:'Catch-22 by Joseph Heller',10749:'Normal People by Sally Rooney',14:'The Name of the Wind by Patrick Rothfuss',16:'The House in the Cerulean Sea by TJ Klune',80:'In Cold Blood by Truman Capote',99:'Sapiens by Yuval Noah Harari',12:'Into the Wild by Jon Krakauer',10751:'Wonder by R.J. Palacio',9648:'And Then There Were None by Agatha Christie'};
+
+// Onboarding
+var onboarded=false;
+try{onboarded=localStorage.getItem('rs_onboarded')==='1'}catch(e){}
+function dismissOnboard(){onboarded=true;try{localStorage.setItem('rs_onboarded','1')}catch(e){}draw()}
 
 // State
 var S={movies:[],loading:false,err:null,page:1,tp:1,genres:[],moods:[],q:'',tab:'trending',mode:'tab',
@@ -343,7 +357,7 @@ function draw(){
       return'<div class="seg" style="clip-path:polygon(50% 50%,'+cPts(i,n)+');'+bg+'"></div>';
     }).join('');
   }else{
-    segHtml='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--dim);text-align:center;padding:20px;font-style:italic;font-family:Instrument Serif,serif">Add titles<br>from the catalog</div>';
+    segHtml='<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px"><div style="font-size:32px;margin-bottom:8px;opacity:.4">🎬</div><div style="font-size:13px;color:var(--mute);line-height:1.6">Swipe up to browse<br>Tap <strong style="color:var(--ink)">+</strong> on any poster<br>or try <strong style="color:var(--ink)">Random Fill</strong></div></div>';
   }
 
   // Wheel slots
@@ -378,7 +392,7 @@ function draw(){
     +'<div style="font-size:11px;color:var(--dim)">'+wn+'/3 loaded</div>'
     +'</div>'
     +'<div class="wheel-logo">Reel<em>Spin</em></div>'
-    +'<div class="wheel-subtitle">flick the lens, find your film</div>'
+    +'<div class="wheel-subtitle">'+(wn===0?'swipe up to browse & add movies to the lens':wn<2?wn+' loaded — add '+(2-wn)+' more to spin':'grab the lens & drag to spin')+'</div>'
     +'<div class="lens-wrap">'
     +'<div class="lens-pointer"></div>'
     +'<div id="lens" class="lens-body" style="transform:rotate('+currentRotation+'deg)">'+segHtml+'<div class="lens-inner-ring"></div><div class="lens-inner-ring2"></div><div class="lens-center"></div><div class="lens-glass"></div></div>'
@@ -386,8 +400,9 @@ function draw(){
     +'<div class="wheel-slots">'+slotHtml+'</div>'
     +'<div class="spin-controls">'
     +'<button class="spin-btn" onclick="doSpin()" '+(wn<2?'disabled':'')+'>Spin'+(wn<2?' — add '+(2-wn)+' more':'')+'</button>'
-    +'<button class="fill-btn" onclick="autoFill()">Random Fill</button>'
+    +'<button class="fill-btn" onclick="autoFill()" title="Fills from whatever category you browsed last">🎲 Random Fill</button>'
     +'</div>'
+    +(wn===0?'<div class="hint-tag">Tip: Select a genre or mood first, then Random Fill picks from that category</div>':'')
     +'<div class="swipe-hint"><span>↑</span> Swipe up to browse catalog</div>'
     +'</div>'
 
@@ -409,7 +424,7 @@ function draw(){
     +'</div></div>'
 
     // OVERLAYS
-    +drawResult()+drawTimer()+drawBookRec()+drawPressure()+drawModal();
+    +drawResult()+drawTimer()+drawBookRec()+drawPressure()+drawModal()+drawOnboard();
 
   // Attach touch events to lens
   setTimeout(attachTouch,50);
@@ -420,42 +435,48 @@ function cPts(i,n){var d=360/n,s=i*d-90,e=s+d,pts=[];for(var a=s;a<=e;a+=3){var 
 // Touch spin
 function attachTouch(){
   var el=document.getElementById('lens');if(!el||el._touchAttached)return;el._touchAttached=true;
-  var rect,cx,cy,lastAngle,lastTime,vel;
+  var rect,cx,cy,lastAngle,lastTime,vel,totalRotation,startX,startY;
   function getAngle(x,y){return Math.atan2(y-cy,x-cx)*180/Math.PI}
   el.addEventListener('touchstart',function(e){
     if(isSpinning||wc()<2)return;
     e.preventDefault();rect=el.getBoundingClientRect();cx=rect.left+rect.width/2;cy=rect.top+rect.height/2;
-    var t=e.touches[0];lastAngle=getAngle(t.clientX,t.clientY);lastTime=Date.now();vel=0;
+    var t=e.touches[0];lastAngle=getAngle(t.clientX,t.clientY);lastTime=Date.now();vel=0;totalRotation=0;
+    startX=t.clientX;startY=t.clientY;
   },{passive:false});
   el.addEventListener('touchmove',function(e){
-    if(isSpinning||!lastAngle)return;e.preventDefault();
+    if(isSpinning||lastAngle===null)return;e.preventDefault();
     var t=e.touches[0];var angle=getAngle(t.clientX,t.clientY);var delta=angle-lastAngle;
     if(delta>180)delta-=360;if(delta<-180)delta+=360;
-    currentRotation+=delta;el.style.transform='rotate('+currentRotation+'deg)';
+    currentRotation+=delta;totalRotation+=Math.abs(delta);
+    el.style.transform='rotate('+currentRotation+'deg)';
     var now=Date.now();vel=delta/(now-lastTime+1)*16;lastAngle=angle;lastTime=now;
   },{passive:false});
   el.addEventListener('touchend',function(e){
     if(isSpinning||wc()<2)return;
-    if(Math.abs(vel)>2){doSpin()}// Flick detected
+    // Trigger spin if: any rotational velocity OR dragged enough total rotation OR swiped far enough linearly
+    var endX=e.changedTouches[0].clientX,endY=e.changedTouches[0].clientY;
+    var linearDist=Math.sqrt(Math.pow(endX-(startX||0),2)+Math.pow(endY-(startY||0),2));
+    if(Math.abs(vel)>0.8 || totalRotation>15 || linearDist>40){doSpin()}
     lastAngle=null;
   });
   // Mouse support for desktop
-  var mouseDown=false;
+  var mouseDown=false;var mTotalRot=0;
   el.addEventListener('mousedown',function(e){
     if(isSpinning||wc()<2)return;
     rect=el.getBoundingClientRect();cx=rect.left+rect.width/2;cy=rect.top+rect.height/2;
-    lastAngle=getAngle(e.clientX,e.clientY);lastTime=Date.now();vel=0;mouseDown=true;
+    lastAngle=getAngle(e.clientX,e.clientY);lastTime=Date.now();vel=0;mouseDown=true;mTotalRot=0;
   });
   window.addEventListener('mousemove',function(e){
     if(!mouseDown||isSpinning)return;
     var angle=getAngle(e.clientX,e.clientY);var delta=angle-lastAngle;
     if(delta>180)delta-=360;if(delta<-180)delta+=360;
-    currentRotation+=delta;el.style.transform='rotate('+currentRotation+'deg)';
+    currentRotation+=delta;mTotalRot+=Math.abs(delta);
+    el.style.transform='rotate('+currentRotation+'deg)';
     var now=Date.now();vel=delta/(now-lastTime+1)*16;lastAngle=angle;lastTime=now;
   });
   window.addEventListener('mouseup',function(){
     if(!mouseDown)return;mouseDown=false;
-    if(Math.abs(vel)>2&&wc()>=2&&!isSpinning)doSpin();
+    if((Math.abs(vel)>0.8||mTotalRot>15)&&wc()>=2&&!isSpinning)doSpin();
     lastAngle=null;
   });
   // Swipe up to browse
@@ -527,6 +548,24 @@ function drawModal(){
   var inW=S.wheel.some(function(w){return w&&w.id===m.id});
   var bk=BOOKS[m.id]?'<div class="booknote">📖 <strong>'+BOOKS[m.id]+'</strong></div>':'';
   return'<div class="ov ov-light" onclick="clsM()"><div class="modal-card" onclick="event.stopPropagation()">'+tr+'<div style="padding:18px 22px 24px"><h2 style="font-family:Instrument Serif,serif;font-size:24px;margin-bottom:3px">'+m.t+'</h2><p style="font-size:11px;color:var(--mute);margin-bottom:10px">'+m.y+(m.mt==='tv'?' · TV':'')+'</p><p style="font-size:12px;line-height:1.7;color:#666;margin-bottom:10px">'+m.o+'</p><div style="margin-bottom:6px">'+gt+'</div><div class="rlinks"><span style="font-size:13px;font-weight:700">★'+m.v.toFixed(1)+'</span><a href="https://www.imdb.com/find/?q='+encodeURIComponent(m.t)+'" target="_blank">IMDb</a><a href="https://www.rottentomatoes.com/search?search='+encodeURIComponent(m.t)+'" target="_blank">RT</a></div>'+provH+bk+'<button onclick="addW(S.sel);clsM()" style="margin-top:14px;padding:10px 22px;border-radius:8px;background:'+(inW?'var(--gold)':'var(--ink)')+';border:none;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;width:100%">'+(inW?'✓ On Wheel':'+ Add to Wheel')+'</button></div></div></div>';
+}
+
+function drawOnboard(){
+  if(onboarded)return'';
+  return'<div class="onboard-overlay" onclick="event.stopPropagation()">'
+    +'<div class="onboard-card">'
+    +'<div style="font-size:40px;margin-bottom:10px">🎥</div>'
+    +'<h2 style="font-family:Instrument Serif,serif;font-size:26px;margin-bottom:4px">Welcome to Reel<em style="color:var(--gold)">Spin</em></h2>'
+    +'<p style="font-size:13px;color:var(--mute);margin-bottom:22px;line-height:1.6">Can\'t decide what to watch?<br>Let the lens decide for you.</p>'
+
+    +'<div class="onboard-step"><div class="onboard-num">1</div><div><h4>Browse & Pick</h4><p>Swipe up to explore movies and TV shows. Filter by genre, mood, or search how you\'re feeling. Tap the <strong>+</strong> button on any poster to add it to the lens.</p></div></div>'
+
+    +'<div class="onboard-step"><div class="onboard-num">2</div><div><h4>Or Random Fill</h4><p>Don\'t want to choose? Select a genre or mood first, then tap <strong>Random Fill</strong> — it picks 3 from that category. No category? It picks from whatever\'s trending.</p></div></div>'
+
+    +'<div class="onboard-step"><div class="onboard-num">3</div><div><h4>Spin the Lens</h4><p>With 2-3 movies loaded, <strong>grab the lens and drag</strong> in a circle to spin it — like turning a dial. Or just tap <strong>Spin</strong>. The lens picks your movie.</p></div></div>'
+
+    +'<button onclick="dismissOnboard()" style="width:100%;padding:14px;border-radius:10px;background:var(--ink);border:none;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:Instrument Serif,serif;font-style:italic;margin-top:6px;letter-spacing:.5px">Let\'s Go</button>'
+    +'</div></div>';
 }
 
 // Init
